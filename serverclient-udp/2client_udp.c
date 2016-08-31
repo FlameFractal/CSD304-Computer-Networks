@@ -14,7 +14,7 @@
 
 #define SERVER_PORT 5432
 #define BUF_SIZE 40480
-
+#define FILEBUF 4
 
 int main(int argc, char * argv[]){
   
@@ -23,8 +23,11 @@ int main(int argc, char * argv[]){
   struct sockaddr_in sin;
   char *host;
   char buf[BUF_SIZE];
+  char filebuf[FILEBUF];
   int s;
   int len;
+
+
 
   if ((argc==2)||(argc == 3)) {
     host = argv[1];
@@ -93,17 +96,17 @@ int main(int argc, char * argv[]){
   
   //printf("Waiting for first byte\n\n"); 
   
-  while((strcmp(buf, "BYE") != 0)){
-	  fputs(buf, stdout);
+  while((strcmp(filebuf, "BYE") != 0)){
+	  //fputs(buf, stdout);
   	//printf("Waiting... in while\n");
-  	len = recv(s, buf, sizeof(buf), 0);
-
+  	len += recv(s, filebuf, sizeof(filebuf), 0);
+    printf("len = %d",len);
   	fp = fopen(argv[2], "ab+");
   	//fputs(buf, stdout);
   	//printf("\n");
-    fwrite(buf, len,1, fp);
+    fwrite(filebuf, 1,1, fp);
   	fclose(fp);
 	
   }
-  printf("out\n");
+  printf("out. \n");
 }

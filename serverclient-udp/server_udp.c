@@ -13,7 +13,7 @@
 
 #define SERVER_PORT 5432
 #define BUF_SIZE 20
-#define FILENAME "lab2.pdf"
+#define FILEBUF 4
 
    int main(int argc, char * argv[]){
     struct sockaddr_in sin;
@@ -25,12 +25,14 @@
     int s;
     char *host;
     struct hostent *hp;
-    char filebuf[BUF_SIZE]={'\0'};
+    char filebuf[FILEBUF]={'\0'};
+    char filename[20];
 
   /* Declarations for file(s) to be sent 
      ...
   */
-     FILE *file;
+     FILE *file, *file2;
+
 
   /* For inserting delays, use nanosleep()
      struct timespec ... */ 
@@ -38,6 +40,10 @@
 
   /* To get filename from commandline */
   /* if (argc==...) {} */
+     if(argc==2){
+        strcpy(filename,argv[1]);
+        printf("%s\n",filename);
+     }
 
 
   /* Create a socket */
@@ -52,8 +58,8 @@
     sin.sin_family = AF_INET;
 
   /* If socket IP address specified, bind to it. */
-    if(argc == 2) {
-      host = argv[1];
+    if(argc == 3) {
+      host = argv[2];
       hp = gethostbyname(host);
       if (!hp) {
         fprintf(stderr, "server: unknown host %s\n", host);
@@ -77,7 +83,7 @@
       printf("Server is listening at address %s:%d\n", clientIP, SERVER_PORT);
     }
 
-    printf("Client needs to send \"GET\" to receive the file %s\n", FILENAME);
+    printf("Client needs to send \"GET\" to receive the file %s\n", filename);
     
 
     client_addr_len = sizeof(client_addr);
@@ -92,9 +98,10 @@
 
 
     // /* Send to client */
-      file = fopen(FILENAME, "rb");
+      file = fopen(filename, "rb");
       printf("File at%p\n",file);
-
+      file2 = fopen("test.pdf", "wb");
+      printf("Test File at%p\n",file2);
 
 //    while(1){
       fseek(file, 0L, SEEK_SET);
@@ -108,17 +115,18 @@
       fseek(file,0L, SEEK_END);
       long int filesize = ftell(file);
       rewind(file);
-      printf("Transferring file %s of %ld bytes\n",FILENAME,filesize);
+      printf("Transferring file %s of %ld bytes\n",filename,filesize);
       
       int size=0;
-
       for( size = 0; size < filesize; size++)
       {
-        fread(&filebuf,1,1,file);
-        printf("%s",filebuf);
+        fread(&filebuf,filebuf,1,file);
+//        printf("%s",filebuf);
+        fwrite(filebuf,filebuf,1,file2);
         sendto(s, &filebuf, sizeof(filebuf), 0, (struct sockaddr*)&client_addr, client_addr_len);
       }
-printf("out\n");
+
+      printf("out\n");
       sendto(s, "BYE", sizeof("BYE"), 0, (struct sockaddr*)&client_addr, client_addr_len);
 
   //    }
