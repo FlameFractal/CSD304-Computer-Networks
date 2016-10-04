@@ -117,43 +117,44 @@ int main(int argc, char * argv[]){
 	//Initialize expectation
 	expectation='0';
 
-	while(len<40481){
+	while(len=40481){
 
 		len = recvfrom(s, buf, BUF_SIZE, 0,(struct sockaddr *)&sin, &client_addr_len);
 
-		if (buf[len] == expectation){
+		if (buf[len-1] == expectation){
 			int expectlen = send(s, &expectation, sizeof(expectation), 0);
-			printf("expectation=%c (Next)\n", expectation);
-			//Switch expectation
-			expectation = (expectation == '0') ? '1': '0';
-			//printf("packet ln=%d",len);
-			
-			if(argc == 3){
-				fp = fopen(argv[2], "ab+");
-				//For last packet where 
-				fwrite(buf, 1,len-1, fp);
-				fclose(fp);
+			if (expectlen == -1)
+			{
+				printf("sending ack error\n");
+				exit(1);
 			}
-			
+			else{
+				++counter;
+				printf("expectation=%c (New)\n", expectation);
+				expectation = (expectation == '0') ? '1': '0';		//Switch expectation
+				
+				if(argc == 3){
+					fp = fopen(argv[2], "ab+");
+					fwrite(buf, 1,len-1, fp);
+					fclose(fp);
+				}
+			}
+		}
+		else if(buf[len-1] == 1-expectation){
+			//Duplicate has been recieved
+			expectation = (expectation == '0') ? '1': '0';		//Send previous expection's acknowledgement
+			int expectlen = send(s, &expectation, sizeof(expectation), 0);
+			printf("last expectation=%c (Duplicate)\n", expectation);
+			expectation = (expectation == '0') ? '1': '0';		//Switch back expectation
 		}
 		else{
-			
-			//Duplicate has been recieved
-			//Send previous expection's acknowledgement
-			
-			expectation = (expectation == '0') ? '1': '0';	
-			int expectlen = send(s, &expectation, sizeof(expectation), 0);
-			printf("expectation=%c (Duplicate)\n", expectation);
-			//Switch to current expectation
-			expectation = (expectation == '0') ? '1': '0';
-
+			printf("dont know wtf going on\n");
 		}
 
 		
 		if(strstr(buf, "BYE")) break;
 		
 		recvBytes+=len;
-		++counter;
 	}
 
 	long after = curTimeMillis();

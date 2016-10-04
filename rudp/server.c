@@ -120,10 +120,9 @@ int main(int argc, char * argv[]){
       while(!(size < BUF_SIZE_VID)){
 
         size = fread(buf, 1, sizeof(buf)-1, fp);
-        printf("size = \n");
-        buf[size+1] = expectation;
-        //Increment packet size by 1 for sequence number appended to end
-        size++;
+        buf[size] = expectation;  //Append expectation
+        size++; //Increment packet size by 1 for sequence number appended to end
+
         len = sendto(s, buf, size, 0,(struct sockaddr *)&client_addr,client_addr_len);
 
         if (len == -1) {
@@ -147,28 +146,27 @@ int main(int argc, char * argv[]){
 
         int acklen = recvfrom(s, &ack, sizeof(ack), 0,(struct sockaddr *)&client_addr, &client_addr_len);
         printf("ack = %c. ",ack);
+
         if(ack =='\0'){
           printf("Timed out. Retransmitting packet counter %d \n",counter);
-          len = sendto(s, buf, BUF_SIZE_VID, 0,(struct sockaddr *)&client_addr,client_addr_len);    
-          printf("Hurray! done Sendinfg");       
+          len = sendto(s, buf, size, 0,(struct sockaddr *)&client_addr,client_addr_len);    
         }
         else if (ack == expectation){
           printf("Packet acknowledged. Sending next.\n");
-          //Switch expectation
-          expectation = (expectation == '0') ? '1': '0';
+          expectation = (expectation == '0') ? '1': '0';  //Switch expectation
           break;
         }
-        else
-          printf("Some error\n"); //if ~expectation is recieved in ack
-        exit(1);
-      }
+        else{
+          printf("Some error\n"); //if opposite of expectation is recieved in ack
+          exit(1);
+        }
 
-        //Reset ack
+      }
+      
+      //Reset ack
       ack = '\0'; 
 
-
       printf("Counter : %d , Size = %d , Len = %d\n", counter++, size, len);
-          // nanosleep(&ts, NULL);
       memset(buf, 0, sizeof(buf));
       sentBytes+=size;
     }
