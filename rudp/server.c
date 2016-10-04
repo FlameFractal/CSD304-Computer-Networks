@@ -17,7 +17,7 @@
 #define SERVER_PORT_TEXT 5432
 #define SERVER_PORT_VID 6005
 #define BUF_SIZE_TEXT 4096
-#define BUF_SIZE_VID 40480
+#define BUF_SIZE_VID 40480+1
 
 
 int main(int argc, char * argv[]){
@@ -32,9 +32,10 @@ int main(int argc, char * argv[]){
   int sentBytes = 0;
   struct hostent *hp;
   char ack = '\0';
+  char expectation = '\0';
 
   FILE* fp;  
-  char* fileName = "anime.mp4";
+  char* fileName = "in.mp4";
 //  struct timespec ts;
   // ts.tv_sec = 0;
   // // ts.tv_nsec = 200000000L;
@@ -111,14 +112,28 @@ int main(int argc, char * argv[]){
     printf("Server got message from %s: %s [%d bytes]\n", clientIP, buf, len);
     rewind(fp);
 
-    if(strcmp(buf, "GET") == 0){
+    if(strcmp(buf, "get") == 0){
       int size = BUF_SIZE_VID;
       int counter = 0;
+      expectation = '0';
 
       while(!(size < BUF_SIZE_VID)){
 
-        size = fread(buf, 1, sizeof(buf), fp);
+        size = fread(buf, 1, sizeof(buf)-1, fp);
+        printf("size = \n");
+        buf[size+1] = expectation;
+        //Increment packet size by 1 for sequence number appended to end
+        size++;
         len = sendto(s, buf, size, 0,(struct sockaddr *)&client_addr,client_addr_len);
+
+        if (len == -1) {
+          perror("server: sendto");
+          exit(1);
+        }
+        if(len != size){
+          printf("ERROR!!");
+          exit(0);
+        }   
 
       /* Set recieve timeout in socket options */
         struct timeval timeout;
@@ -126,41 +141,53 @@ int main(int argc, char * argv[]){
         timeout.tv_usec = 30000;
         if (setsockopt(s,SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0){
          perror("server: socket option timeout error");
-        }
+       }
 
        while(1){
-          ack = '\0';
-          int acklen = recvfrom(s, &ack, sizeof(ack), 0,(struct sockaddr *)&client_addr, &client_addr_len);
-          printf("ack = %c acklen = %d\n",ack, acklen);
-          if(ack != 'a'){
-            printf("Timed out. Retransmitting packet counter %d \n",counter);
-            len = sendto(s, buf, size, 0,(struct sockaddr *)&client_addr,client_addr_len);                
-          }
-          else if (ack == 'a')
-            printf("Packet sent successfully. Sending next.\n");
-            break;
-        }
 
-          if (len == -1) {
-            perror("server: sendto");
-            exit(1);
-          }
-          if(len != size){
-            printf("ERROR!!");
-            exit(0);
-          }
-          printf("Counter : %d , Size = %d , Len = %d\n", counter++, size, len);
+        int acklen = recvfrom(s, &ack, sizeof(ack), 0,(struct sockaddr *)&client_addr, &client_addr_len);
+        printf("ack = %c. ",ack);
+        if(ack =='\0'){
+          printf("Timed out. Retransmitting packet counter %d \n",counter);
+          len = sendto(s, buf, BUF_SIZE_VID, 0,(struct sockaddr *)&client_addr,client_addr_len);    
+          printf("Hurray! done Sendinfg");       
+        }
+        else if (ack == expectation){
+          printf("Packet acknowledged. Sending next.\n");
+          //Switch expectation
+          expectation = (expectation == '0') ? '1': '0';
+          break;
+        }
+        else
+          printf("Some error\n"); //if ~expectation is recieved in ack
+        exit(1);
+      }
+
+        //Reset ack
+      ack = '\0'; 
+
+
+      printf("Counter : %d , Size = %d , Len = %d\n", counter++, size, len);
           // nanosleep(&ts, NULL);
-          memset(buf, 0, sizeof(buf));
-          sentBytes+=size;
-        }
-
+      memset(buf, 0, sizeof(buf));
+      sentBytes+=size;
     }
 
-      //SENDING BYE
+    //SENDING BYE
     strcpy(buf, "BYE");
     sendto(s, buf, strlen(buf)+1, 0, (struct sockaddr*)&client_addr, client_addr_len);
+    memset(buf, '\0', sizeof(buf));
+
     printf("\nSentBytes = %d\n", sentBytes);
-  }
-  memset(buf, '\0', sizeof(buf));
+
+    //Reset socket option of timeout
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+    if (setsockopt(s,SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0){
+     perror("server: socket option timeout error");
+   }
+
+ }
+} 
 } 

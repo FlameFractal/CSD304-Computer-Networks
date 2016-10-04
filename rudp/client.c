@@ -5,12 +5,10 @@ LAB 2 SUBMISSION
 
 TEAM MEMBERS
 --------------------
-
+Saketh Vallakatla - 1410110352
 Prerna - 1410110306
 Vishal Gauba - 1410110501
 Pranjal Mathur - 1410110296
-Saketh Vallakatla - 1410110352
-
 */
 
 
@@ -26,10 +24,10 @@ Saketh Vallakatla - 1410110352
 #include <sys/time.h>
 
 #define SERVER_PORT 6005
-#define BUF_SIZE 40480
+#define BUF_SIZE 40480+1
 
 long curTimeMillis() {
-    struct timeval te; 
+	struct timeval te; 
     gettimeofday(&te, NULL); // get current time
     long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // caculate milliseconds
     // printf("milliseconds: %lld\n", milliseconds);
@@ -47,6 +45,7 @@ int main(int argc, char * argv[]){
 	int len;
 	int recvBytes = 0;
 	char ack='a';
+	char expectation = '\0';
 
 
 	if ((argc==2)||(argc == 3)) {
@@ -97,9 +96,7 @@ int main(int argc, char * argv[]){
 	else{
 		
 		printf("Client connected to %s:%d. c=%d\n", argv[1], SERVER_PORT,c );
-		printf("To play the music, pipe the downlaod file to a player, e.g., ALSA, SOX, VLC: cat recvd_file.wav | vlc -\n"); 
 	}
-
 
 
 	  /* send message to server */  
@@ -112,30 +109,48 @@ int main(int argc, char * argv[]){
 	len = strlen(buf) + 1;
 	send(s, buf, len, 0);
 	printf("Waiting...\n");
-
-	//printf("Waiting... in while LLLLLL\n"); 
-
 	socklen_t client_addr_len = sizeof(sin);
 	int counter = 0;
 
 	long before = curTimeMillis();
 
-	while(1){
-		  //fputs(buf, stdout);
-		// printf("Waiting... in while\n");
-//		len = recv(s, buf, sizeof(buf), 0);
+	//Initialize expectation
+	expectation='0';
+
+	while(len<40481){
+
 		len = recvfrom(s, buf, BUF_SIZE, 0,(struct sockaddr *)&sin, &client_addr_len);
 
-		int acklen = send(s, &ack, sizeof(ack), 0);
-		printf("sizeof(ack) = %d acklen = %lu ack=%c\n", sizeof(ack), acklen, ack);
-
-		if(argc == 3){
-			fp = fopen(argv[2], "ab+");
-			fwrite(buf, 1,len, fp);
-			fclose(fp);
+		if (buf[len] == expectation){
+			int expectlen = send(s, &expectation, sizeof(expectation), 0);
+			printf("expectation=%c (Next)\n", expectation);
+			//Switch expectation
+			expectation = (expectation == '0') ? '1': '0';
+			//printf("packet ln=%d",len);
+			
+			if(argc == 3){
+				fp = fopen(argv[2], "ab+");
+				//For last packet where 
+				fwrite(buf, 1,len-1, fp);
+				fclose(fp);
+			}
+			
 		}
+		else{
+			
+			//Duplicate has been recieved
+			//Send previous expection's acknowledgement
+			
+			expectation = (expectation == '0') ? '1': '0';	
+			int expectlen = send(s, &expectation, sizeof(expectation), 0);
+			printf("expectation=%c (Duplicate)\n", expectation);
+			//Switch to current expectation
+			expectation = (expectation == '0') ? '1': '0';
+
+		}
+
 		
-		if(strcmp(buf, "BYE") == 0) break;
+		if(strstr(buf, "BYE")) break;
 		
 		recvBytes+=len;
 		++counter;
