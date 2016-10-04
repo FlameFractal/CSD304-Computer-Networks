@@ -130,6 +130,8 @@ int main(int argc, char * argv[]){
 			}
 			else{
 				++counter;
+				recvBytes+=len;
+
 				printf("expectation=%c (New)\n", expectation);
 				expectation = (expectation == '0') ? '1': '0';		//Switch expectation
 				
@@ -154,7 +156,6 @@ int main(int argc, char * argv[]){
 		
 		if(strstr(buf, "BYE")) break;
 		
-		recvBytes+=len;
 	}
 
 	long after = curTimeMillis();

@@ -41,12 +41,7 @@ int main(int argc, char * argv[]){
   // // ts.tv_nsec = 200000000L;
   // ts.tv_nsec = 2000L;
 
-  if(argc == 2){
-    if(strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help")){
-      printf("usage:./server IP_ADDR FILE_NAME MAX_CLIENTS\n");
-      exit(0);
-    }
-  }
+  
   
   if (argc > 2) {
     fileName = argv[2];  
