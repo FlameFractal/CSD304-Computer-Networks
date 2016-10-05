@@ -151,9 +151,8 @@ int main(int argc, char * argv[]){
           expectation = (expectation == '0') ? '1': '0';  //Switch expectation
           break;
         }
-        else{
-          printf("Some error\n"); //if opposite of expectation is recieved in ack
-          exit(1);
+        else{ //ack !=expectation i.e. ack = 1-exp
+          printf("Recieved duplicate ack of previous packet. Ignoring.\n"); //if opposite of expectation is recieved in ack
         }
 
       }
