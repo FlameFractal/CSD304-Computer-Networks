@@ -104,13 +104,16 @@ int main(int argc, char * argv[]){
 
     inet_ntop(client_addr.ss_family,&(((struct sockaddr_in *)&client_addr)->sin_addr),clientIP, INET_ADDRSTRLEN);
 
-    printf("Server got message from %s: %s [%d bytes]\n", clientIP, buf, len);
     rewind(fp);
 
     if(strcmp(buf, "get") == 0){
+    	printf("\n\nServer got message from %s: %s [%d bytes]\n", clientIP, buf, len);
+    
       int size = BUF_SIZE_VID;
       int counter = 0;
       expectation = '0';
+
+int retransmitting=0;
 
       while(!(size < BUF_SIZE_VID)){
 
@@ -132,7 +135,7 @@ int main(int argc, char * argv[]){
       /* Set recieve timeout in socket options */
         struct timeval timeout;
         timeout.tv_sec = 0;
-        timeout.tv_usec = 30000;
+        timeout.tv_usec = 1;
         if (setsockopt(s,SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0){
          perror("server: socket option timeout error");
        }
@@ -144,7 +147,8 @@ int main(int argc, char * argv[]){
 
         if(ack =='\0'){
           printf("Timed out. Retransmitting packet counter %d \n",counter);
-          len = sendto(s, buf, size, 0,(struct sockaddr *)&client_addr,client_addr_len);    
+          len = sendto(s, buf, size, 0,(struct sockaddr *)&client_addr,client_addr_len);
+          retransmitting++;
         }
         else if (ack == expectation){
           printf("Packet acknowledged. Sending next.\n");
@@ -153,6 +157,7 @@ int main(int argc, char * argv[]){
         }
         else{ //ack !=expectation i.e. ack = 1-exp
           printf("Recieved duplicate ack of previous packet. Ignoring.\n"); //if opposite of expectation is recieved in ack
+          ack='\0';
         }
 
       }
@@ -171,7 +176,8 @@ int main(int argc, char * argv[]){
     memset(buf, '\0', sizeof(buf));
 
     printf("\nSentBytes = %d\n", sentBytes);
-
+    printf("Retransmitting %d\n",retransmitting );
+    sentBytes=0;
     //Reset socket option of timeout
     struct timeval timeout;
     timeout.tv_sec = 0;
