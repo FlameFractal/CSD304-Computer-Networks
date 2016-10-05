@@ -142,7 +142,7 @@ int main(int argc, char * argv[]){
 				}
 			}
 		}
-		else if(buf[len-1] == 1-expectation){
+		else if(buf[len-1] == (expectation == '0') ? '1': '0'){
 			//Duplicate has been recieved
 			expectation = (expectation == '0') ? '1': '0';		//Send previous expection's acknowledgement
 			int expectlen = send(s, &expectation, sizeof(expectation), 0);
