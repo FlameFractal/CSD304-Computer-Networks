@@ -167,6 +167,6 @@ int main(int argc, char * argv[]){
 	long after = curTimeMillis();
 	long timeTakenMs = (after - before);
 	
-	printf("\n\n\nReceived Bytes = %d, \nReceived Packets (unique) =  %d, \nDuplicate Packets = %d\n", recvBytes, packet_counter, duplicate_counter);
+	printf("\n\n\nReceived Bytes = %d, \nReceived Packets (unique) =  %d, \nDuplicate Packets = %d, \nEfficiency = %d%%", recvBytes, packet_counter, duplicate_counter, (packet_counter*100)/(packet_counter+duplicate_counter));
 	printf("Time Taken = %ld ms\n\n", (after - before));
 }

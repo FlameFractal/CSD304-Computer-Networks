@@ -215,7 +215,7 @@ int main(int argc, char * argv[]){
 			sendto(sock, packet, strlen(packet)+1, 0, (struct sockaddr*)&client_addr, client_addr_len);
 			memset(packet, '\0', sizeof(packet));
 
-			printf("\n\n\nSent Bytes = %d,\nSent Packets (unique) = %d, \nRetransmitted Packets = %d, \nPercentage of Loss = %d%% \n", sentBytes, packet_counter, retransmit_counter, (retransmit_counter*100)/(retransmit_counter+packet_counter));
+			printf("\n\n\nSent Bytes = %d,\nSent Packets (unique) = %d, \nRetransmitted Packets = %d, \nEfficiency = %d%% \n", sentBytes, packet_counter, retransmit_counter, (packet_counter*100)/(retransmit_counter+packet_counter));
 			
 			/* Reset socket option of timeout to recieve request from next client*/
 			struct timeval timeout_t;
