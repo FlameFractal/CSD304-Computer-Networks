@@ -168,5 +168,5 @@ int main(int argc, char * argv[]){
 	long timeTakenMs = (after - before);
 	
 	printf("\n\n\nReceived Bytes = %d, \nReceived Packets (unique) =  %d, \nDuplicate Packets = %d, \nEfficiency = %d%%", recvBytes, packet_counter, duplicate_counter, (packet_counter*100)/(packet_counter+duplicate_counter));
-	printf("\nTime Taken = %ld s\n\n", (after - before)/1000);
+	printf("\nTime Taken = %.2f seconds\n\n", (float)(after - before)/1000);
 }
