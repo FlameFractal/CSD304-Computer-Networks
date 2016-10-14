@@ -1,7 +1,7 @@
 /*
 	LAB 2 SUBMISSION
 
-	USAGE: ./server FILENAME [TIME_OUT (def: 30000 us)] [IP_ADDR (def: localhost)] [PORT (def: 6005)]
+	USAGE: ./server FILENAME [TIME_OUT (30000us)] [IP_ADDR (localhost)] [PORT (6005)]
 
 	TEAM MEMBERS
 	--------------------
@@ -28,7 +28,7 @@
 
 int main(int argc, char * argv[]){
 
-	printf("\nThis is a Reliable UDP based Server. \nUSAGE: ./server FILENAME [TIME_OUT (def: 30000 us)] [IP_ADDR (def: localhost)] [PORT (def: 6005)]. \nInitialising processes.\n\n");
+	printf("\nThis is a Reliable UDP based Server. \nUSAGE: ./server FILENAME [TIME_OUT (30000us)] [IP_ADDR (localhost)] [PORT (6005)]. \nInitialising processes.\n\n");
 
 
 	/* Variable declarations */

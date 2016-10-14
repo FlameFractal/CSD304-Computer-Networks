@@ -1,7 +1,7 @@
 /*
 	LAB 2 SUBMISSION
 
-	USAGE: ./client IP_ADDR [OUTPUT_FILE_NAME (def: out.mp4)] [PORT def: (6005)]
+	USAGE: ./client IP_ADDR [OUTPUT_FILE_NAME (out.mp4)] [PORT (6005)]
 
 	TEAM MEMBERS
 	--------------------
@@ -34,7 +34,7 @@ long curTimeMillis() {
 
 int main(int argc, char * argv[]){
 
-	printf("\nThis is a Reliable UDP based Client. \nUSAGE: ./client IP_ADDR [OUTPUT_FILE_NAME (def: out.mp4)] [PORT def: (6005)]. \nInitialising processes.\n\n");
+	printf("\nThis is a Reliable UDP based Client. \nUSAGE: ./client IP_ADDR [OUTPUT_FILE_NAME (out.mp4)] [PORT (6005)]. \nInitialising processes.\n\n");
 
 
 	FILE *fp;
