@@ -2,6 +2,23 @@
  Lab 2, client
  Team: 
 */
+ /*
+ypedef struct file_request_message
+{
+	uint8_t type;
+	uint8_t filename_size;
+	char filename[BUF_SIZE];
+} f_req;
+  //type=0
+
+typedef struct acknowledgement
+{
+ uint8_t type;
+ uint8_t num_sequences;
+ uint16_t sequence_no[BUF_SIZE];
+} ack;
+  //type=1
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +32,7 @@
 
 #define SERVER_PORT 5432
 #define BUF_SIZE 256
-#define RWS 10
+#define RWS 3
 
 int lfr,laf,incoming_size;
 FILE *output_file;
@@ -67,7 +84,7 @@ int main(int argc, char * argv[]){
 	int written=0;
 	int content_write=0;
 	int * ack_counter;
-	char * file_name_input="in.txt";
+	char * file_name_input="Aladdin.avi";
 	int i;
 
 
@@ -107,19 +124,25 @@ int main(int argc, char * argv[]){
 	fgets(buf,BUF_SIZE,stdin);
 	strtok(buf,"\n");
 	fileReq=init_f_req(fileReq,strlen(file_name_input),file_name_input);
+ 	
  	//Send GET 
 	sendto(s,buf,strlen(buf)+1, 0, (struct sockaddr *)&sin, sizeof(sin)); 
+ 	
  	//send File Request
 	sendto(s,&fileReq,sizeof(f_req), 0, (struct sockaddr *)&sin, sizeof(sin)); 
+	
+	//Receive info/File not found message from server
 	recvfrom(s,temp,sizeof(blank), 0,(struct sockaddr *)&sin, &client_addr_len);
+	
 	type_recvd=type_find(temp);
 	if(type_recvd==4)
 	{
 		printf("No such file found\n");
 	}
+	
 	else
 	{
-		output_file=fopen("out.txt","wb");
+		output_file=fopen(file_name_input,"wb");
 		infoRecvd=temp;
 		if((infoRecvd->file_size%infoRecvd->block_size)==0)
 		{
@@ -130,6 +153,7 @@ int main(int argc, char * argv[]){
 			incoming_size=((infoRecvd->file_size)/(infoRecvd->block_size));
 		}
 		fwrite(&infoRecvd->data,1,infoRecvd->block_size,output_file);
+ 		printf("Determined incoming_size is %d\n",incoming_size);
  		//set up ack_counter
 		ack_counter=malloc(sizeof(int)*(incoming_size+1));
 		for(i=0;i<=incoming_size;i++)
@@ -149,15 +173,20 @@ int main(int argc, char * argv[]){
 			{
 				dataRecvd=temp;
 				num_recvd=dataRecvd->sequence_number;
-
-				printf("Received %d and laf is %d \n",num_recvd,laf);
+				printf("Received %d and laf is %d and incoming_size is %d \n",num_recvd,laf,incoming_size);
+				
+				//check if the incoming frame lies in the acceptable range
 				if((length>0)&&(num_recvd<=laf))
 				{
 					{
+						printf("checkpoint for ack loop\n");
 						ackSending=init_ack(ackSending,num_recvd);
+						//if(num_recvd!=3)
+						{
 						length = sendto(s,&ackSending, sizeof(ack), 0, (struct sockaddr *)&sin, sizeof(sin)); 
 						memcpy(&data_buffer[(num_recvd*infoRecvd->block_size)%RWS],&dataRecvd->data,infoRecvd->block_size);
 						printf("Sending ack for %d\n",num_recvd );
+						}
 						ack_counter[num_recvd]=1;
 						for(i=written;i<=num_recvd;i++)
 						{
@@ -176,9 +205,8 @@ int main(int argc, char * argv[]){
 						{
 							for (i = written+1; i <= lfr;i++)
 							{
-								if(fwrite(&data_buffer[(i*(infoRecvd->block_size)%RWS)],1,dataRecvd->block_size,output_file)<0){
-									printf("fuckeeeeeeeeeeeeeeed\n");
-								}
+								printf("Writing block %d to file\n",i );
+								fwrite(&data_buffer[(i*(infoRecvd->block_size)%RWS)],1,dataRecvd->block_size,output_file);
 							}
 						}
 						written=lfr; 

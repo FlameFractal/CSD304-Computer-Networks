@@ -12,8 +12,9 @@
 
      #define SERVER_PORT 5432
      #define BUF_SIZE 256
-     #define SWS 10
-     #define TIMEOUT 0.1
+     #define SWS 3
+     #define TIMEOUT 1
+//ADD MUTEX LOCKS
   //   #define SEND_SIZE 10000
      /*FUNCTION PROTOTYPES*/
 int check_timeout(clock_t start,int num);
@@ -42,7 +43,7 @@ f_nf init_f_nf(f_nf a,int b,char * c)
 {
   a.type=4;
   a.filename_size=b;
-  strcpy(a.filename,c);
+  memcpy(&a.filename,c,b);
   return a;
 }
 
@@ -51,7 +52,7 @@ f_data init_f_data(f_data a,int b,int c,char * d)
   a.type=3;
   a.sequence_number=b;
   a.block_size=c;
-  strcpy(a.data,d);
+  memcpy(&a.data,d,c);
   return a;
 }
 
@@ -60,14 +61,15 @@ f_info init_f_info(f_info a,int b,int c,char * d,int e,int f,char * g)
   a.type=2;
   a.sequence_number=b;
   a.filename_size=c;
-  strcpy(a.filename,d);
+  memcpy(&a.filename,d,c);
   a.file_size=e;
   a.block_size=f;
-  strcpy(a.data,g);
+  memcpy(&a.data,g,f);
   return a;
 }
 
      /*GLOBAL VARIABLES*/
+pthread_mutex_t count_mutex;
 int lar,lfs,sendSize,fileSize;
 int no_of_blocks;
 clock_t * start_vals;
@@ -120,14 +122,6 @@ int main(int argc, char const *argv[])
   //Receive GET message
   recvfrom(udpSocket,buf,BUF_SIZE, 0,(struct sockaddr *)&serverStorage, &addr_size);
   
-  /*
-  sendto(udpSocket,&sendSize, sizeof(int), 0,(struct sockaddr *)&serverStorage, addr_size);
-  int i;
-  for (i = 1; i <=SEND_SIZE; i++)
-  {
-    data[i]=i;
-  }
-*/
   while(strcmp(buf,"GET")!=0)
   {}
 
@@ -151,7 +145,7 @@ if(type==0)
   else
   {
       //create ack_thread
-    //pthread_create(&ack_thread,NULL,receive_acks,NULL);
+    pthread_create(&ack_thread,NULL,receive_acks,NULL);
     printf("Created new thread\n");
     fileSize=getSize(fp);
     if((fileSize%BUF_SIZE)==0)
@@ -163,6 +157,7 @@ if(type==0)
       sendSize=(fileSize/BUF_SIZE);    
     }
       //initializing ack_buffer
+    printf("cp11\n");  
     ack_recv=calloc(sendSize+1,sizeof(int));
    //  for(i=1;i<=sendSize;i++)
    //  {
@@ -170,82 +165,55 @@ if(type==0)
    // }
 
   //initialize time buffers
-   start_vals=malloc(sizeof(clock_t)*(sendSize+1));
-
+    start_vals=malloc(sizeof(clock_t)*(sendSize+1));
+    printf("cp12\n");
     //initialize data buffer
-   char data[BUF_SIZE*sendSize];
-   int count_read;
-   printf("gonna read that shit now\n");
-   if(!(count_read=fread(buf,1,BUF_SIZE,fp))){
-    printf("lolllllllllllzzzzzzzzzzzzz\n");
-   }
-   printf("%d\n",count_read );
-   fprintf(stdout, "%s\n",buf );
-   fileInfo=init_f_info(fileInfo,index,fileReqstd->filename_size,fileReqstd->filename,fileSize,BUF_SIZE,buf);
-   len=sendto(udpSocket,&(fileInfo), sizeof(f_info), 0,(struct sockaddr *)&serverStorage, addr_size);
-  if(!(count_read=fread(buf,1,BUF_SIZE,fp))){
-    printf("lollllllll 2\n");
-   }
-      fprintf(stdout, "%s\n",buf );
-   /*while(count_read==BUF_SIZE)
-   {
-    fileData=init_f_data(fileData,++seq_count,count_read,buf);
-    sendto(udpSocket,&(fileData), sizeof(f_data), 0,(struct sockaddr *)&serverStorage, addr_size);
-    count_read=fread(buf,1,256,fp);
-  }
-  if (count_read>0)
-  {
-    fileData=init_f_data(fileData,++seq_count,count_read,buf);  
-    sendto(udpSocket,&(fileData), sizeof(f_data), 0,(struct sockaddr *)&serverStorage, addr_size);
-  }    
-  */
-  while(index<=sendSize||(lar<sendSize))
-  {
-    while((lfs-lar<SWS)&&(index<=sendSize))
-    {    
-      fileData=init_f_data(fileData,index,count_read,buf);
-      sendto(udpSocket,&(fileData), sizeof(f_data), 0,(struct sockaddr *)&serverStorage, addr_size);
-      start_vals[index]=clock();
-      lfs++;
-      index++;
-      memcpy(&data[(lfs%SWS)*BUF_SIZE],buf,BUF_SIZE);
-      count_read=fread(buf,1,BUF_SIZE,fp);    
-      if(index>sendSize)
-      {
-       break;
-     }
-     if(len==-1)
-     {
-      perror("Sendto error:");
-    }
-  }
+    char * data=malloc(sizeof(char)*BUF_SIZE*sendSize);
+    printf("cp13\n");
 
-  while((check_timeout(start_vals[lar+1],lar+1)==0)&&(ack_recv[lar+1]==0)&&(lar<lfs)&&(lfs-lar>=SWS)){}
-
-    if((ack_recv[lar+1]==0)&&(lfs-lar>=SWS))
+    int count_read=fread(buf,1,BUF_SIZE,fp);
+    printf("%d\n",count_read );
+    fprintf(stdout, "%s\n",buf );
+    fileInfo=init_f_info(fileInfo,index,fileReqstd->filename_size,fileReqstd->filename,fileSize,BUF_SIZE,buf);
+    len=sendto(udpSocket,&(fileInfo), sizeof(f_info), 0,(struct sockaddr *)&serverStorage, addr_size);
+    count_read=fread(buf,1,BUF_SIZE,fp);
+    while(index<sendSize||(lar<=sendSize))
     {
-     printf("Retransmitting %d\n",(lar+1));
-     fileData=init_f_data(fileData,lar+1,strlen(data[((lar+1)%SWS)*BUF_SIZE]),data[(lar+1)%SWS]);
+      while((lfs-lar<=SWS)&&(index<sendSize))
+      {    
+        fileData=init_f_data(fileData,index,count_read,buf);
+        sendto(udpSocket,&(fileData), sizeof(f_data), 0,(struct sockaddr *)&serverStorage, addr_size);
+        start_vals[index]=clock();
+        lfs++;
+        index++;
+        memcpy(&data[(lfs%SWS)*BUF_SIZE],buf,BUF_SIZE);
+        count_read=fread(buf,1,BUF_SIZE,fp);    
+        if(index>sendSize)
+        {
+         break;
+       }
+       if(len==-1)
+       {
+        perror("Sendto error:");
+      }
+    }
+
+    printf("ENtering wait loop\n");
+    int lar_prev=lar+1;
+    while((check_timeout(start_vals[lar+1],lar+1)==0)&&(ack_recv[lar+1]==0)){}
+    printf("Exited wait loop\n");
+    //will come out of loop either on timeout or on receiving the ack
+    if((ack_recv[lar_prev]==0)&&(check_timeout(start_vals[lar_prev],lar_prev)==1))
+    {
+      //mutex lock
+     printf("Retransmitting %d while lfs=%d and lar=%d and SWS=%d\n",(lar+1),lfs,lar,SWS);
+     fileData=init_f_data(fileData,lar+1,BUF_SIZE,&data[(lar+1)%SWS]);
      sendto(udpSocket,&(fileData), sizeof(f_data), 0,(struct sockaddr *)&serverStorage, addr_size);
      start_vals[lar+1]=clock();
+     //mutex unlock
+     printf("Added new transmit time as %d\n",start_vals[lar+1] );
    }
  }
-/*
- int count_read=fread(buf,1,256,fp);
- fileInfo=init_f_info(fileInfo,++seq_count,fileReqstd->filename_size,fileReqstd->filename,getSize(fp),BUF_SIZE,buf);
- sendto(udpSocket,&(fileInfo), sizeof(f_info), 0,(struct sockaddr *)&serverStorage, addr_size);
- count_read=fread(buf,1,256,fp);
- while(count_read==BUF_SIZE)
- {
-  fileData=init_f_data(fileData,++seq_count,count_read,buf);
-  sendto(udpSocket,&(fileData), sizeof(f_data), 0,(struct sockaddr *)&serverStorage, addr_size);
-  count_read=fread(buf,1,256,fp);
-}
-if (count_read>0)
-{
-  fileData=init_f_data(fileData,++seq_count,count_read,buf);  
-  sendto(udpSocket,&(fileData), sizeof(f_data), 0,(struct sockaddr *)&serverStorage, addr_size);
-}*/
 }
 }
 else
@@ -255,67 +223,36 @@ else
 }
 
 
-  //fclose(fp);
-/*
-while(index<=SEND_SIZE||(lar<SEND_SIZE))
-{
- while((lfs-lar<=SWS)&&(index<=SEND_SIZE))
- {        
-
-  len = sendto(udpSocket,&data[index], sizeof(int), 0,(struct sockaddr *)&serverStorage, addr_size);
-  start_vals[index]=clock();       
-        //          printf("Sending %d \n",data[index]);
-  lfs++;
-  index++;
-  if(index>SEND_SIZE+1)
-  {
-    break;
-  }
-  if(len==-1)
-  {
-   perror("Sendto error:");
- }
-}
-       //   printf("lfs-lar is greater than SWS with lfs=%d and lar=%d\n",lfs,lar);
-                         //will comeout of loop if timeout or lost
-
-while((check_timeout(start_vals[lar+1],lar+1)==0)&&(ack_recv[lar+1]==0)&&(lar<lfs)&&(lfs-lar>SWS)){}
-
- if((ack_recv[lar+1]==0)&&(lfs-lar>SWS))
- {
-  printf("Retransmitting %d\n",data[lar+1]);
-  len = sendto(udpSocket,&data[lar+1], sizeof(int), 0,(struct sockaddr *)&serverStorage, addr_size);
-  start_vals[lar+1]=clock();
-}
-
-
-}
-*/
 }
 
 void * receive_acks()
 {
   printf("Inside new thread\n");
   fflush(stdout);
+  printf("cp1\n");
   char blank2[1000];
   void * temp2;
   temp2=(void *)(&blank2);
 
   int length,i,check,type_recv;
   int ack_num;
-  printf("going into new thread while \n");
   while(1){
-   length = recvfrom(udpSocket,temp2,sizeof(blank2), 0,(struct sockaddr *)&serverStorage, &addr_size);
-     //printf("Received ack %d\n",ack_num );
-   type_recv=type_find(temp2);
-   if(type_recv==1)
-   {
+    printf("cp2\n");
+    length = recvfrom(udpSocket,temp2,sizeof(blank2), 0,(struct sockaddr *)&serverStorage, &addr_size);
+    type_recv=type_find(temp2);
+    if(type_recv==1)
+    {
       ackRecvd=temp2;
       ack_num=ackRecvd->sequence_no[0];
+      
+      //see if the ack was received within the timeout of the frame
+      //mutex lock
       if(check_timeout(start_vals[ack_num],ack_num)==0)
       {
        ack_recv[ack_num]=1;
        check=1;
+       printf("Added ack for %d\n",ack_num );
+       //to check for frame number to be retransmitted
        for(i=lar+1;i<=ack_num;i++)
        {
         if(ack_recv[i]==0)
@@ -326,27 +263,28 @@ void * receive_acks()
          break;
        }
      }
+//mutex unlock
      if(check==1)
      {
       lar=ack_num;
     }
           // printf("The LAR is %d\n",lar );
-   }
-   else{
+  }
+  else{
     printf("ACK no. %d received after timeout\n",ack_num );
-   }
-   memset(&ack_num,'\0',sizeof(int));
-fflush(stdout); 
+  }
+  memset(&ack_num,'\0',sizeof(int));
+  fflush(stdout); 
 }
 else{
   printf("Received from client unexpected or undecodable message\n");
   exit(0);
 }
-   
+
 }
 }
 
-
+//returns 1 if timed out and 0 if there is time left
 int check_timeout(clock_t start,int num)
 {
   clock_t curr=clock();
