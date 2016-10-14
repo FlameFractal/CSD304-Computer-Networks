@@ -1,5 +1,5 @@
 /*
-	LAB 2 SUBMISSION
+	LAB 3 SUBMISSION
 
 	USAGE: ./server FILENAME [TIME_OUT (30000us)] [IP_ADDR (localhost)] [PORT (6005)]
 
