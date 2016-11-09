@@ -1,18 +1,7 @@
-/*
-	LAB 3 SUBMISSION
-
-	TEAM MEMBERS
-	--------------------
-	Prerna - 1410110306
-	Vishal Gauba - 1410110501
-	Pranjal Mathur - 1410110296
-	Saketh Vallakatla - 1410110352
-*/
-
 #include<stdio.h>
 #include<stdlib.h>
 
-#define BUF_SIZE 256
+#define BUF_SIZE 20000
 //from client to server
 ;
 

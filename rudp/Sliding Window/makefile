@@ -7,8 +7,8 @@
 # 	Pranjal Mathur - 1410110296
 # 	Saketh Vallakatla - 1410110352
 
-s: server.c c
-	gcc server.c -o s -lpthread -w -g
+s: server1.c c
+	gcc server1.c -o s -lpthread -w -g
 
 c: client.c
 	gcc client.c -o c

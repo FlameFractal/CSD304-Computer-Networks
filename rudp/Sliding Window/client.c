@@ -1,33 +1,24 @@
-/*
-	LAB 3 SUBMISSION
-
-	USAGE: 
-
-	TEAM MEMBERS
-	--------------------
-	Prerna - 1410110306
-	Vishal Gauba - 1410110501
-	Pranjal Mathur - 1410110296
-	Saketh Vallakatla - 1410110352
+/* CSD 304 Computer Networks, Fall 2016
+Lab 2, client
+Team:
 */
-
- /*
+/*
 ypedef struct file_request_message
 {
-	uint8_t type;
-	uint8_t filename_size;
-	char filename[BUF_SIZE];
+uint8_t type;
+uint8_t filename_size;
+char filename[BUF_SIZE];
 } f_req;
-  //type=0
+//type=0
 
 typedef struct acknowledgement
 {
- uint8_t type;
- uint8_t num_sequences;
- uint16_t sequence_no[BUF_SIZE];
+uint8_t type;
+uint8_t num_sequences;
+uint16_t sequence_no[BUF_SIZE];
 } ack;
-  //type=1
- */
+//type=1
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,8 +31,8 @@ typedef struct acknowledgement
 #include "structures.h"
 
 #define SERVER_PORT 5432
-#define BUF_SIZE 256
-#define RWS 3
+#define BUF_SIZE 20000
+#define RWS 50
 
 int lfr,laf,incoming_size;
 FILE *output_file;
@@ -77,26 +68,25 @@ int type_find(void * buf)
 
 
 int main(int argc, char * argv[]){
-
+	
+	char * file_name_input="video_coke.avi";
 	struct hostent *hp;
 	struct sockaddr_in sin;
 	char *host;
 	int s;
 	int len;
-	char blank[1000];
+	char blank[65000];
 	void * temp;
 	temp=(void *)(&blank);
 	int length;
 	int index=-1;
 	int type_recvd;
 	int num_recvd;
-	int written=0;
+	int written;
 	int content_write=0;
 	int * ack_counter;
-	char * file_name_input="Aladdin.avi";
 	int i;
-
-
+	
 	if ((argc==2)||(argc == 3)) {
 		host = argv[1];
 	}
@@ -104,9 +94,9 @@ int main(int argc, char * argv[]){
 		fprintf(stderr, "usage: client serverIP [download_filename(optional)]\n");
 		exit(1);
 	}
-
-
-/* translate host name into peer's IP address */
+	
+	
+	/* translate host name into peer's IP address */
 	hp = gethostbyname(host);
 	if (!hp) {
 		fprintf(stderr, "client: unknown host: %s\n", host);
@@ -114,36 +104,37 @@ int main(int argc, char * argv[]){
 	}
 	else
 		printf("Host %s found!\n", argv[1]);
-
-/* build address data structure */
+	
+	/* build address data structure */
 	memset((char *)&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	memcpy((char *)&sin.sin_addr, hp->h_addr, hp->h_length);
 	sin.sin_port = htons(SERVER_PORT);
 	socklen_t client_addr_len = sizeof(sin);
-
-/* create socket */
+	
+	/* create socket */
 	if ((s = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("client: socket");
 		exit(1);
 	}
-
+	
 	printf("Client will get data from to %s:%d.\n", argv[1], SERVER_PORT);
 	char buf[BUF_SIZE];
 	fgets(buf,BUF_SIZE,stdin);
 	strtok(buf,"\n");
 	fileReq=init_f_req(fileReq,strlen(file_name_input),file_name_input);
- 	
- 	//Send GET 
-	sendto(s,buf,strlen(buf)+1, 0, (struct sockaddr *)&sin, sizeof(sin)); 
- 	
- 	//send File Request
-	sendto(s,&fileReq,sizeof(f_req), 0, (struct sockaddr *)&sin, sizeof(sin)); 
+	
+	//Send GET
+	sendto(s,buf,strlen(buf)+1, 0, (struct sockaddr *)&sin, sizeof(sin));
+	
+	//send File Request
+	sendto(s,&fileReq,sizeof(f_req), 0, (struct sockaddr *)&sin, sizeof(sin));
 	
 	//Receive info/File not found message from server
+	memset(blank,'\0',sizeof(blank));
 	recvfrom(s,temp,sizeof(blank), 0,(struct sockaddr *)&sin, &client_addr_len);
-	
 	type_recvd=type_find(temp);
+	
 	if(type_recvd==4)
 	{
 		printf("No such file found\n");
@@ -152,8 +143,9 @@ int main(int argc, char * argv[]){
 	else
 	{
 		output_file=fopen(file_name_input,"wb");
+		
 		infoRecvd=temp;
-		if((infoRecvd->file_size%infoRecvd->block_size)==0)
+		if(((infoRecvd->file_size)%(infoRecvd->block_size))==0)
 		{
 			incoming_size=((infoRecvd->file_size)/(infoRecvd->block_size))-1;
 		}
@@ -162,76 +154,109 @@ int main(int argc, char * argv[]){
 			incoming_size=((infoRecvd->file_size)/(infoRecvd->block_size));
 		}
 		fwrite(&infoRecvd->data,1,infoRecvd->block_size,output_file);
- 		printf("Determined incoming_size is %d\n",incoming_size);
- 		//set up ack_counter
+		printf("Determined incoming_size is %d\n",incoming_size);
+		
+		//set up ack_counter
 		ack_counter=malloc(sizeof(int)*(incoming_size+1));
 		for(i=0;i<=incoming_size;i++)
 		{
 			ack_counter[i]=0;
 		}
- 		//initialize data buffer
-//		printf("malloced data buffer and memseted with sizeof data_buffer as %d while it should be %d\n",sizeof(*data_buffer),(sizeof(char)*infoRecvd->block_size)*RWS);
+		
+		//initialize data buffer
 		char data_buffer[infoRecvd->block_size*RWS];
+		int blocksize_recvd[RWS];
+		int end_packet_num;
 		memset(data_buffer,'\0',sizeof(data_buffer));
 		laf=RWS;
-		while(lfr<incoming_size)
+		written=0;
+		lfr=0;
+		
+		while(1)
 		{
+			memset(blank,'\0',sizeof(blank));
 			length = recvfrom(s,temp,sizeof(blank), 0,(struct sockaddr *)&sin, &client_addr_len);
+			if(strcmp(temp,"BYE")==0)
+			{
+				printf("Received BYE\n");
+				exit(0);
+			}
 			type_recvd=type_find(temp);
 			if (type_recvd==3)
 			{
 				dataRecvd=temp;
 				num_recvd=dataRecvd->sequence_number;
-				printf("Received %d and laf is %d and incoming_size is %d \n",num_recvd,laf,incoming_size);
+				printf("Received %d of size %d and laf is %d and incoming_size is %d \n",num_recvd,dataRecvd->block_size,laf,incoming_size);
 				
 				//check if the incoming frame lies in the acceptable range
-				if((length>0)&&(num_recvd<=laf))
+				if((length>0)&&(num_recvd<laf))
 				{
 					{
-						printf("checkpoint for ack loop\n");
+						//
+						if((dataRecvd->block_size)<BUF_SIZE && (dataRecvd->block_size)>0)
+						{
+							end_packet_num=num_recvd;
+							printf("Last packet Received\n");
+						}
+						
 						ackSending=init_ack(ackSending,num_recvd);
-						//if(num_recvd!=3)
+						//sending the acknowledgement
+						//if(num_recvd!=2)
 						{
-						length = sendto(s,&ackSending, sizeof(ack), 0, (struct sockaddr *)&sin, sizeof(sin)); 
-						memcpy(&data_buffer[(num_recvd*infoRecvd->block_size)%RWS],&dataRecvd->data,infoRecvd->block_size);
-						printf("Sending ack for %d\n",num_recvd );
+							length = sendto(s,&ackSending, sizeof(ack), 0, (struct sockaddr *)&sin, sizeof(sin));
 						}
-						ack_counter[num_recvd]=1;
-						for(i=written;i<=num_recvd;i++)
+						memcpy(&data_buffer[(num_recvd*infoRecvd->block_size)%RWS],&dataRecvd->data,dataRecvd->block_size);
+						blocksize_recvd[num_recvd%RWS]=dataRecvd->block_size;
+						printf("Sent ack for %d\n",num_recvd );
+							if(written<incoming_size)
 						{
-							if(ack_counter[i+1]==1)
+							ack_counter[num_recvd]=1;
+							
+							for(i=written;i<=num_recvd;i++)
 							{
-								lfr=i+1;
-								laf++;
+								if(ack_counter[i+1]==1)
+								{
+									lfr=i+1;
+									laf++;
+								}
+								else
+								{
+									break;
+								}
 							}
-							else
+							
+							if(lfr!=written)
 							{
-								break;
+								for (i = written+1; i <= lfr;i++)
+								{
+									printf("Writing block %d to file\n",i);
+									//fputs(&data_buffer[((i*(infoRecvd->block_size))%RWS)],stdout);
+									fwrite(&data_buffer[((i*(infoRecvd->block_size))%RWS)],1,blocksize_recvd[i%RWS],output_file);
+								}
+								
+							}
+							
+							written=lfr;
+							
+							if(written==end_packet_num)
+							{
+								fclose(output_file);
+								//exit(0);
 							}
 						}
-
-						if(lfr!=written)
-						{
-							for (i = written+1; i <= lfr;i++)
-							{
-								printf("Writing block %d to file\n",i );
-								fwrite(&data_buffer[(i*(infoRecvd->block_size)%RWS)],1,dataRecvd->block_size,output_file);
-							}
-						}
-						written=lfr; 
-					}  
+					}
+					
+					//printf("lfr=%d\n",lfr );
 				}
-				printf("lfr=%d\n",lfr );
 			}
-
 			else
 			{
 				printf("Received something other than data block\n");
 				exit(0);
 			}
-
+			
 		}
-		fclose(output_file);
+		//		fclose(output_file);
 		exit(0);
-}
+	}
 }

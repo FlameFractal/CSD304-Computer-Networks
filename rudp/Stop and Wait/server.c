@@ -145,8 +145,28 @@ int main(int argc, char * argv[]){
 		c=1;
 		inet_ntop(client_addr.ss_family,&(((struct sockaddr_in *)&client_addr)->sin_addr),clientIP, INET_ADDRSTRLEN);
 		rewind(fp);
-		if(strcmp(packet, "get") == 0){
-			
+
+		if (strstr(packet,"in.mp4")){
+			fileName = "in.mp4";
+		}
+		else if (strstr(packet,"video_coke.avi")){
+			fileName = "video_coke.avi";
+		}
+		else{
+			fileName = "asda";
+		}
+
+		
+		fp = fopen(fileName, "rb");
+	    printf("adsssssssss = %s\n fp = %s\n", fileName, fp);
+		
+		if(!fp){
+			printf("Input file not found");
+			sendto(sock, "404: File Not Found", sizeof("404: File Not Found"), 0,(struct sockaddr *)&client_addr,client_addr_len);
+		}
+		else{
+		// if(strcmp(packet, "get") == 0){
+				
 			printf("Server got message from %s: '%s' [%d bytes]\n\n", clientIP, packet, len);
 		 	
 		 	int size = PACKET_SIZE;

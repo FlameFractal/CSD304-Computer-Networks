@@ -118,14 +118,14 @@ int main(int argc, char * argv[]){
 
 
 	/* send "get" message to server */  
-	fgets(packet, 4, stdin);
-	strtok(packet,"\n");	
-	packet[PACKET_SIZE-1] = '\0';
-	len = strlen(packet) + 1;
+	gets(packet);
+	// strtok(packet,"\n");	
+	// packet[PACKET_SIZE-1] = '\0';
+	// len = strlen(packet) + 1;
+	len = strlen(packet);
 	send(sock, packet, len, 0);
-	
-	printf("Waiting to recieve.\n");
-	socklen_t client_addr_len = sizeof(sin);
+		
+		socklen_t client_addr_len = sizeof(sin);
 	long before = curTimeMillis();
 
 	int packet_counter = 0;
@@ -133,9 +133,18 @@ int main(int argc, char * argv[]){
 	int recvBytes = 0;
 	int duplicate_counter = 0;
 
+
 	while(len = PACKET_SIZE){
 
 		len = recvfrom(sock, packet, PACKET_SIZE, 0,(struct sockaddr *)&sin, &client_addr_len);
+
+		if (strstr(packet,"404: File"))
+		{
+			printf("404: File Not Found at server\n");
+			exit(0);
+		}
+		else{
+			printf("Waiting to recieve.\n");
 
 		if (packet[len-1] == expectation){
 			send(sock, &expectation, sizeof(expectation), 0); /* send acknowledgement */
@@ -169,4 +178,5 @@ int main(int argc, char * argv[]){
 	
 	printf("\n\n\nReceived Bytes = %d, \nReceived Packets (unique) =  %d, \nDuplicate Packets = %d, \nEfficiency = %d%%", recvBytes, packet_counter, duplicate_counter, (packet_counter*100)/(packet_counter+duplicate_counter));
 	printf("\nTime Taken = %.2f seconds\n\n", (float)(after - before)/1000);
+}
 }
