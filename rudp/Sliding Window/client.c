@@ -1,25 +1,3 @@
-/* CSD 304 Computer Networks, Fall 2016
-Lab 2, client
-Team:
-*/
-/*
-ypedef struct file_request_message
-{
-uint8_t type;
-uint8_t filename_size;
-char filename[BUF_SIZE];
-} f_req;
-//type=0
-
-typedef struct acknowledgement
-{
-uint8_t type;
-uint8_t num_sequences;
-uint16_t sequence_no[BUF_SIZE];
-} ack;
-//type=1
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +9,7 @@ uint16_t sequence_no[BUF_SIZE];
 #include "structures.h"
 
 #define SERVER_PORT 5432
-#define BUF_SIZE 20000
+#define BUF_SIZE 10240
 #define RWS 50
 
 int lfr,laf,incoming_size;
@@ -62,7 +40,7 @@ int type_find(void * buf)
 {
 	f_info * var;
 	var=buf;
-	printf("%d\n",var->type);
+	printf("\n");
 	return var->type;
 }
 
@@ -122,10 +100,7 @@ int main(int argc, char * argv[]){
 	char buf[BUF_SIZE];
 	fgets(buf,BUF_SIZE,stdin);
 	strtok(buf,"\n");
-	fileReq=init_f_req(fileReq,strlen(file_name_input),file_name_input);
-	
-	//Send GET
-	sendto(s,buf,strlen(buf)+1, 0, (struct sockaddr *)&sin, sizeof(sin));
+	fileReq=init_f_req(fileReq,strlen(buf),buf);
 	
 	//send File Request
 	sendto(s,&fileReq,sizeof(f_req), 0, (struct sockaddr *)&sin, sizeof(sin));

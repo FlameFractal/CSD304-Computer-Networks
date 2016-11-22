@@ -1,7 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 
-#define BUF_SIZE 20000
+#define BUF_SIZE 10240
 //from client to server
 ;
 

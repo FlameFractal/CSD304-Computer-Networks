@@ -11,7 +11,7 @@
 #include "structures.h"
 
 #define SERVER_PORT 5432
-#define BUF_SIZE 20000
+#define BUF_SIZE 10240
 #define SWS 10	
 #define TIMEOUT 3
 
@@ -71,6 +71,8 @@ int lar,lfs,sendSize,fileSize;
 int no_of_blocks;
 int transmission_count=0;
 clock_t * start_vals;
+clock_t trans_start;
+clock_t trans_end;
 int * ack_recv;
 FILE * fp,* log_fp;
 char buf[BUF_SIZE];
@@ -116,17 +118,11 @@ int main(int argc, char const *argv[])
 	
 	/*initialize client address size*/
 	addr_size=sizeof(serverStorage);
-	printf("Client needs to send \"GET\" to receive the file %s\n", argv[1]);
-	//Receive GET message
-	recvfrom(udpSocket,buf,BUF_SIZE, 0,(struct sockaddr *)&serverStorage, &addr_size);
-	
-	//Wait for the client to send 'GET' message
-	while(strcmp(buf,"GET")!=0)
-	{}
+	printf("Client needs to send the name of the file %s\n", argv[1]);
 	
 	//create data sending thread receiving thread
 	pthread_create(&main_thread,NULL,send_data,NULL);
-	printf("Created the data sending thread\n");
+	//printf("Created the data sending thread\n");
 	pthread_join(main_thread,NULL);
 	pthread_join(ack_thread,NULL);
 }
@@ -152,8 +148,8 @@ void * send_data()
 		else
 		{
 			//create ack_thread
+			printf("Created thread to receive acks\n");
 			pthread_create(&ack_thread,NULL,receive_acks,NULL);
-			printf("Created new thread\n");
 			fileSize=getSize(fp);
 			//determining the fileSize
 			if((fileSize%BUF_SIZE)==0)
@@ -186,27 +182,28 @@ void * send_data()
 			rewind(fp);
 			memset(buf,'\0',sizeof(buf));
 			int count_read=fread(buf,1,BUF_SIZE,fp);
-			printf("count_read_initial=%d\n",count_read);
+			//printf("count_read_initial=%d\n",count_read);
 			fileInfo=init_f_info(fileInfo,0,fileReqstd->filename_size,fileReqstd->filename,fileSize,count_read,buf);
 			
 			//send the initial file_info message
 			len=sendto(udpSocket,&(fileInfo), sizeof(f_info), 0,(struct sockaddr *)&serverStorage, addr_size);
 			
 			sending_index=1;
-			
+			printf("\n Started sending data\n");			
 			while((sending_index<=sendSize)||(lar<=sendSize))
 			{
+				trans_start=clock();
 				while((lfs-lar<SWS)&&(sending_index<=sendSize))
 				{
 					
 					memset(buf,'\0',sizeof(buf));
 					count_read=fread(buf,1,BUF_SIZE,fp);
-					if(count_read==0)
+					/*if(count_read==0)
 					{
-						printf("error reading\n");
+						printf("error reading of packet %d\n",sending_index);
 						exit(0);
 					}
-					
+					*/
 					fileData=init_f_data(fileData,sending_index,count_read,buf);
 					data_size[sending_index]=count_read;
 					
@@ -248,7 +245,7 @@ void * send_data()
 					start_vals[numToBeRecvd]=clock();
 					//printf("set new clock value as %ld\n",start_vals[numToBeRecvd]);
 					transmission_count++;
-					printf("Retransmitted %d while lfs=%d and lar=%d \n",numToBeRecvd,lfs,lar);
+				//	printf("Retransmitted %d while lfs=%d and lar=%d \n",numToBeRecvd,lfs,lar);
 					
 				}
 				pthread_mutex_unlock(&mutex);
@@ -258,6 +255,7 @@ void * send_data()
 				}
 				
 			}
+			trans_end=clock();
 			
 		}
 	}
@@ -271,7 +269,7 @@ void * send_data()
 
 void * receive_acks()
 {
-	printf("acknowledgement receiving thread\n");
+	printf("\nReceiving acknowledgements...\n");
 	fflush(stdout);
 	char blank2[1000];
 	void * temp2;
@@ -336,13 +334,15 @@ void * receive_acks()
 					{
 						printf("Sending BYE\n");
 						sendto(udpSocket,"BYE", sizeof("BYE")+1, 0,(struct sockaddr *)&serverStorage, addr_size);
-						printf("Number of retransmissions=%d\n",transmission_count);
+						printf("Number of retransmissions=%d out of %d\n",transmission_count,sendSize);
+						printf("Data Rate in B/s=%ld",(getSize(fp)*1000)/(trans_end-trans_start));
+						printf(" Bps\n");
 						exit(0);
 					}
 					
 				}
 				else{
-					printf("ACK no. %d received after timeout\n",ack_num );
+					//printf("ACK no. %d received after timeout\n",ack_num );
 				}
 			}
 			memset(&ack_num,'\0',sizeof(int));
@@ -367,7 +367,7 @@ int check_timeout(clock_t start)
 	//TIMEOUT in seconds
 	if((diff/CLOCKS_PER_SEC)>TIMEOUT)
 	{
-		printf("Timeout with start as %ld and curr as %ld \n",start,curr);
+	//	printf("Timeout with start as %ld and curr as %ld \n",start,curr);
 		return 1;
 	}
 	else
